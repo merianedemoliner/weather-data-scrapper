@@ -1,9 +1,35 @@
 import requests, bs4
+from datetime import datetime
 from mysql.connector import MySQLConnection, Error
 from weatherdb_config import read_db_config
 
 def convert_fahrenheit_to_celsius(fahrenheit):
     return (fahrenheit - 32) / 1.8
+
+def insert_data_by_city(city, temperature_c, temperature_f, humidity, clouds, precipitation, datetime):
+    query = "INSERT INTO waether_history(city,temperature_celsius,temperature_fahrenheit,humidity,clouds,precipitation, datetime) " \
+            "VALUES(%s,%s,%s,%s,%s,%s,%s)"
+    args = (city, temperature_c, temperature_f, humidity, clouds, precipitation, datetime)
+ 
+    try:
+        db_config = read_db_config()
+        conn = MySQLConnection(**db_config)
+ 
+        cursor = conn.cursor()
+        cursor.execute(query, args)
+ 
+        if cursor.lastrowid:
+            print('last insert id', cursor.lastrowid)
+        else:
+            print('last insert id not found')
+ 
+        conn.commit()
+    except Error as error:
+        print(error)
+ 
+    finally:
+        cursor.close()
+        conn.close()
 
 # target cities
 cities = ['nova-santa-rita', 'canoas', 'novo-hamburgo', 'sao-leopoldo', 'parobe', 'taquara', 'tres-coroas', 'igrejinha', 'rolante', 'riozinho', 'caraa', 'santo-antonio-da-patrulha']
@@ -18,53 +44,10 @@ for city in cities:
     html_page = requests.get('https://www.wunderground.com/weather/br/' + city)
     html_parsed = bs4.BeautifulSoup(html_page.text, 'html.parser')
     temperature_f = html_parsed.select_one(temperature_css_selector)
-    temperature_c = convert_fahrenheit_to_celsius(float(temperature_f.text))
+    temperature_c = str(convert_fahrenheit_to_celsius(float(temperature_f.text)))
     humidity = html_parsed.select_one(humidity_css_selector)
     clouds = html_parsed.select_one(clouds_css_selector)
     precipitation = html_parsed.select_one(precipitation_css_selector)    
-    
-    print("City: " + city +  "\tTemperature: " + temperature_f.text + "F\tTemperature(C): " + str(temperature_c) + "C\tHumidity: " + humidity.text + "%\tClouds: " + clouds.text + "\tPrecipitation: " + precipitation.text)
 
-# def connect():
-#     """ Connect to MySQL database """
-#     connection = None
-#     try:
-#         connection = mysql.connector.connect(host='weather-database.c43aqgloj5aq.sa-east-1.rds.amazonaws.com',
-#                                              database='weatherdb',
-#                                              user='admin',
-#                                              password='meridoutorado')
-#         if connection.is_connected():
-#             print('Connected to MySQL database')
- 
-#     except Error as e:
-#         print(e)
- 
-#     finally:
-#         if connection is not None and connection.is_connected():
-#             connection.close()
-
-
-# def insert_data_by_city(city, temperature_c, temperature_f):
-#     query = "INSERT INTO waether_history(city,teme) " \
-#             "VALUES(%s,%s)"
-#     args = (title, isbn)
- 
-#     try:
-#         db_config = read_db_config()
-#         conn = MySQLConnection(**db_config)
- 
-#         cursor = conn.cursor()
-#         cursor.execute(query, args)
- 
-#         if cursor.lastrowid:
-#             print('last insert id', cursor.lastrowid)
-#         else:
-#             print('last insert id not found')
- 
-#         conn.commit()
-#     except Error as error:
-#         print(error)
- 
-#     finally:
-#         cursor.close()
-#         conn.close()
+    print("inserting data for " + city)
+    insert_data_by_city(city, temperature_c, temperature_f.text, humidity.text, clouds.text, precipitation.text, datetime.now())
