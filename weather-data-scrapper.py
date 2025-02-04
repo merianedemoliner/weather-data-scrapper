@@ -1,5 +1,6 @@
 import requests, bs4
 from datetime import datetime
+from pytz import timezone
 from mysql.connector import MySQLConnection, Error
 from weatherdb_config import read_db_config
 
@@ -7,7 +8,7 @@ def convert_fahrenheit_to_celsius(fahrenheit):
     return (fahrenheit - 32) / 1.8
 
 def insert_data_by_city(city, temperature_c, temperature_f, humidity, clouds, precipitation, datetime):
-    query = "INSERT INTO waether_history(city,temperature_celsius,temperature_fahrenheit,humidity,clouds,precipitation, datetime) " \
+    insert_command = "INSERT INTO waether_history(city,temperature_celsius,temperature_fahrenheit,humidity,clouds,precipitation, datetime) " \
             "VALUES(%s,%s,%s,%s,%s,%s,%s)"
     args = (city, temperature_c, temperature_f, humidity, clouds, precipitation, datetime)
  
@@ -16,7 +17,7 @@ def insert_data_by_city(city, temperature_c, temperature_f, humidity, clouds, pr
         conn = MySQLConnection(**db_config)
  
         cursor = conn.cursor()
-        cursor.execute(query, args)
+        cursor.execute(insert_command, args)
  
         if cursor.lastrowid:
             print('last insert id', cursor.lastrowid)
@@ -48,6 +49,7 @@ for city in cities:
     humidity = html_parsed.select_one(humidity_css_selector)
     clouds = html_parsed.select_one(clouds_css_selector)
     precipitation = html_parsed.select_one(precipitation_css_selector)    
+    datetime_brazilian = datetime.now(timezone('America/Sao_Paulo'))
 
     print("inserting data for " + city)
-    insert_data_by_city(city, temperature_c, temperature_f.text, humidity.text, clouds.text, precipitation.text, datetime.now())
+    insert_data_by_city(city, temperature_c, temperature_f.text, humidity.text, clouds.text, precipitation.text, datetime_brazilian)
